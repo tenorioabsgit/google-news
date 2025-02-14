@@ -1,0 +1,56 @@
+library(httr)
+library(jsonlite)
+
+# Função para obter dados de uma página específica
+get_data <- function(page_number) {
+  headers <- c(
+    'X-API-KEY' = '0d6ecb3b03e5fa72316b21ac8fe3fad8a9e8a52d',
+    'Content-Type' = 'application/json'
+  )
+  
+  body <- sprintf('{
+    "q": "LGPD OR ANPD",
+    "gl": "br",
+    "hl": "pt-br",
+    "num": 100,
+    "tbs": "cdr:1,cd_min:01/01/2018,cd_max:31/12/2023",
+    "page": %d
+  }', page_number)
+  
+  res <- VERB("POST", url = "https://google.serper.dev/news", body = body, add_headers(.headers = headers))
+  
+  res_text <- content(res, 'text')
+  res_json <- fromJSON(res_text)
+  
+  # Imprimir o número de resultados retornados nesta página
+  cat("Page:", page_number, "Number of results:", length(res_json$results), "\n")
+  
+  return(as.data.frame(res_json$results))
+}
+
+# Inicializar a lista para armazenar todos os dados
+all_data <- list()
+
+# Inicializar a variável de controle da página
+page_number <- 1
+
+# Loop para continuar a buscar dados até que não haja mais resultados
+while(TRUE) {
+  page_data <- get_data(page_number)
+  
+  if (nrow(page_data) == 0) {
+    break
+  }
+  
+  all_data[[page_number]] <- page_data
+  page_number <- page_number + 1
+}
+
+# Combinar todos os dataframes em um único dataframe
+final_data <- do.call(rbind, all_data)
+
+# Imprimir o dataframe resultante
+print(final_data)
+
+# Salvar o dataframe resultante em um arquivo CSV
+write.csv(final_data, "resultados_LGPD_ANPD.csv", row.names = FALSE)
